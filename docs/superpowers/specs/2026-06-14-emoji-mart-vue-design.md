@@ -33,16 +33,25 @@ Root `package.json` gets one new script: `"build:vue": "yarn workspace @emoji-ma
   "version": "1.0.0",
   "description": "Vue wrapper for Emoji Mart; the emoji picker for the web.",
   "license": "MIT",
+  "homepage": "https://missiveapp.com/open/emoji-mart",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/missive/emoji-mart",
+    "directory": "packages/emoji-mart-vue"
+  },
   "source": "vue.ts",
+  "types": "dist/index.d.ts",
   "main": "dist/main.js",
   "module": "dist/module.js",
-  "types": "dist/index.d.ts",
   "scripts": {
     "build": "parcel build --no-autoinstall",
     "prepublishOnly": "yarn build"
   },
   "peerDependencies": {
     "emoji-mart": "^5.2",
+    "vue": "^3.0"
+  },
+  "devDependencies": {
     "vue": "^3.0"
   },
   "files": ["/dist", "LICENSE"]
@@ -57,15 +66,17 @@ import { defineComponent, h, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Picker } from 'emoji-mart'
 
 export default defineComponent({
+  name: 'EmojiPicker',
+  inheritAttrs: false,
   setup(_, { attrs }) {
     const el = ref(null)
     const instance = ref(null)
 
     onMounted(() => {
-      instance.value = new Picker({ ...attrs, ref: el.value })
+      instance.value = new Picker({ ...attrs, ref: { current: el.value } })
     })
 
-    watch(attrs, (newAttrs) => {
+    watch(() => ({ ...attrs }), (newAttrs) => {
       instance.value?.update(newAttrs)
     }, { deep: true })
 
@@ -83,14 +94,20 @@ export default defineComponent({
 **`attrs` instead of declared `props`**  
 All attributes passed to the component fall through to `attrs`. We spread them directly into `new Picker()`. This avoids duplicating all ~30 PickerProps as Vue runtime prop declarations. No prop autocomplete in this MVP (same as the React package).
 
+**`inheritAttrs: false`**  
+Without this, Vue automatically applies all `attrs` as DOM attributes on the root `<div>`, causing browser warnings for non-standard attributes (e.g. `data`, `perLine`, `onEmojiSelect`). Disabling fall-through lets us handle attrs manually.
+
+**`ref: { current: el.value }` shape**  
+`HTMLElement.ts` in the core library reads `props.ref.current` to get the container DOM node and appends itself to it. This is a React-ref-shaped object. Passing `el.value` (the raw DOM node) directly would leave `ref.current` as `undefined` and the Picker would never mount. We wrap it: `ref: { current: el.value }`.
+
 **`ref` over `useTemplateRef`**  
 `useTemplateRef` is Vue 3.5+ and designed for SFC template refs. A plain `ref` passed as the `ref` prop to a VNode in a render function is the correct and simpler approach. Targets Vue `^3.0`.
 
 **`onBeforeUnmount` cleanup**  
 Nullifying `instance.value` on unmount matches the React wrapper's cleanup pattern (`instance.current = null`).
 
-**`watch(attrs, ..., { deep: true })` for reactive updates**  
-Equivalent to the React wrapper calling `instance.current.update(props)` on every render. `attrs` in Vue is reactive; watching it drives prop updates into the Picker instance. Deep watch is required because some props (e.g. `data`, `custom`) are objects — a shallow watch would miss inner mutations.
+**`watch(() => ({ ...attrs }), ..., { deep: true })` for reactive updates**  
+Equivalent to the React wrapper calling `instance.current.update(props)` on every render. Spreading `attrs` into a new plain object as the watch source is more reliable than watching the Proxy directly — it ensures added/removed keys trigger the callback. Deep watch handles nested object props (e.g. `data`, `custom`, `categories`).
 
 ## Peer Dependencies
 
