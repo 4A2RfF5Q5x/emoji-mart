@@ -18,6 +18,7 @@ export default defineComponent({
     }, { deep: true })
 
     onBeforeUnmount(() => {
+      instance.value?.disconnectedCallback()
       instance.value = null
     })
 
