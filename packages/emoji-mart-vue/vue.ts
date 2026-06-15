@@ -2,6 +2,10 @@
 import { defineComponent, h, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Picker } from 'emoji-mart'
 
+const camelize = (str) => str.replace(/-([a-z])/g, (_, c) => c.toUpperCase())
+const normalizeAttrs = (attrs) =>
+  Object.fromEntries(Object.entries(attrs).map(([k, v]) => [camelize(k), v]))
+
 export default defineComponent({
   name: 'EmojiPicker',
   inheritAttrs: false,
@@ -10,12 +14,19 @@ export default defineComponent({
     const instance = ref(null)
 
     onMounted(() => {
-      instance.value = new Picker({ ...attrs, ref: { current: el.value } })
+      instance.value = new Picker({
+        ...normalizeAttrs(attrs),
+        ref: { current: el.value },
+      })
     })
 
-    watch(() => ({ ...attrs }), (newAttrs) => {
-      instance.value?.update(newAttrs)
-    }, { deep: true })
+    watch(
+      () => ({ ...attrs }),
+      (newAttrs) => {
+        instance.value?.update(normalizeAttrs(newAttrs))
+      },
+      { deep: true },
+    )
 
     onBeforeUnmount(() => {
       instance.value?.disconnectedCallback()
