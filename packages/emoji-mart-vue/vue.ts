@@ -2,9 +2,7 @@
 import { defineComponent, h, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { Picker } from 'emoji-mart'
 
-const camelize = (str) => str.replace(/-([a-z])/g, (_, c) => c.toUpperCase())
-const normalizeAttrs = (attrs) =>
-  Object.fromEntries(Object.entries(attrs).map(([k, v]) => [camelize(k), v]))
+import { normalizeAttrs } from './utils'
 
 export default defineComponent({
   name: 'EmojiPicker',
